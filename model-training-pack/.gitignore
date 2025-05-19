@@ -1,5 +1,0 @@
-/output/*
-*.egg-info
-__pycache__
-/model-training-pack/training_package/test_data
-training_data

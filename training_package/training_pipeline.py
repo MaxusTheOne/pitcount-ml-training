@@ -6,16 +6,18 @@ from pathlib import Path
 from training_package.prepare_training_data import prepare_training_data
 from training_package.train_model_from_dataset import train_model
 import argparse
-deep_training_config = {
-    "feature_limit": 50,
-    "max_images": None,
-    "n_estimators": 100,
-    "max_depth": None,
+medium_config = {
+    "feature_limit": 20,
+    "max_images": 12,
+    "n_estimators": 20,
+    "n_components": 50,
+    "max_depth": 5,
     "n_jobs": -1,
-
     "resize_to": (1024, 1024),
-
     "skip_existing": False,
+    "verbosity": 2,
+    "random_seed": 0,
+    "model_name": "rf_model_mid"
 
     }
 light_training_config = {
@@ -24,7 +26,7 @@ light_training_config = {
     "n_estimators": 10,
     "n_components": 10,
     "max_depth": 5,
-    "n_jobs": 1,
+    "n_jobs": -1,
     "resize_to": (512, 512),
     "skip_existing": False,
     "verbosity": 2,
@@ -111,7 +113,7 @@ def main():
 
     args = parser.parse_args()
 
-    config_pick = [config_50, deep_training_config, light_training_config][args.config_index]
+    config_pick = [config_50, medium_config, light_training_config][args.config_index]
     config = {**default_config, **config_pick}
 
     config["input_dir"] = args.input_dir

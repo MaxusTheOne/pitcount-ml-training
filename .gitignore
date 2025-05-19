@@ -1,1 +1,8 @@
-/model-training-pack/training_package/test_data
+/output/*
+/build/
+models/
+*.egg-info
+__pycache__
+/training_package/test_data
+
+training_data
