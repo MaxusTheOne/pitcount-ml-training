@@ -13,7 +13,7 @@ from joblib import load
 from imageio import imread
 import cv2
 import json
-from training_package.czi_transformer import czi_to_fmap
+from training_package.transformers import czi_to_fmap
 try:
     import czifile  # for reading .czi image files
 except ImportError:
@@ -28,11 +28,11 @@ except ImportError:
 
 # For simplicity, using fixed paths (could be replaced by args as shown above):
 DIR_PATH = Path(__file__).parent  # Directory of this script
-Model_FOLDER_PATH = DIR_PATH / "models" / "rf_model_light_2"
-MODEL_PATH = Model_FOLDER_PATH / "rf_model_light_2.joblib"
+Model_FOLDER_PATH = DIR_PATH / "models" / "rf_model_mid"
+MODEL_PATH = Model_FOLDER_PATH / "rf_model_mid.joblib"
 IMAGES_DIR = DIR_PATH / "test_data" / "Images"
 LABELS_DIR = DIR_PATH / "test_data" / "Labels"
-TRANSFORMER_PATH = Model_FOLDER_PATH / "transformer_10.joblib"
+TRANSFORMER_PATH = Model_FOLDER_PATH / "transformer_4.joblib"
 
 # Load the trained classification model (e.g., RandomForest, SVM, etc. saved via joblib)
 model = load(MODEL_PATH)

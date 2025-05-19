@@ -21,9 +21,9 @@ medium_config = {
 
     }
 light_training_config = {
-    "feature_limit": 4,
+    "feature_limit": 5,
     "max_images": 6,
-    "n_estimators": 10,
+    "n_estimators": 20,
     "n_components": 10,
     "max_depth": 5,
     "n_jobs": -1,
@@ -63,6 +63,7 @@ default_config = {
     "channel_index": 0,
     "skip_existing": False,
     "feature_source": "reduced",
+    "keep_output": False,
 
     "dry_run": False,
 
