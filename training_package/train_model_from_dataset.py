@@ -74,9 +74,9 @@ def load_dataset(
             continue
         y = np.load(mask_path)
 
-        # Feature limit
-        if CONFIG["feature_limit"] is not None and X.ndim == 3:
-            X = X[..., :CONFIG["feature_limit"]]
+        # # Feature limit
+        # if CONFIG["feature_limit"] is not None and X.ndim == 3:
+        #     X = X[..., :CONFIG["feature_limit"]]
 
         # Flatten
         X_flat = X.reshape(-1, X.shape[-1])
@@ -105,6 +105,7 @@ def train_rf_classifier(X_train, y_train):
         random_state=CONFIG["random_seed"],
         verbose=CONFIG["verbosity"]
     )
+    print(f"X_train 0 shape: {X_train.shape}")
     clf.fit(X_train, y_train)
     return clf
 

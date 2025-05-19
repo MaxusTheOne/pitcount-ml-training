@@ -28,11 +28,11 @@ except ImportError:
 
 # For simplicity, using fixed paths (could be replaced by args as shown above):
 DIR_PATH = Path(__file__).parent  # Directory of this script
-Model_FOLDER_PATH = DIR_PATH / "models" / "rf_model_mid"
-MODEL_PATH = Model_FOLDER_PATH / "rf_model_mid.joblib"
+Model_FOLDER_PATH = DIR_PATH / "models" / "rf_model_light_2"
+MODEL_PATH = Model_FOLDER_PATH / "rf_model_light_2.joblib"
 IMAGES_DIR = DIR_PATH / "test_data" / "Images"
 LABELS_DIR = DIR_PATH / "test_data" / "Labels"
-TRANSFORMER_PATH = Model_FOLDER_PATH / "transformer_4.joblib"
+TRANSFORMER_PATH = Model_FOLDER_PATH / "transformer.joblib"
 
 # Load the trained classification model (e.g., RandomForest, SVM, etc. saved via joblib)
 model = load(MODEL_PATH)
@@ -47,7 +47,6 @@ dices = []   # list of Dice for each image
 count_errors = []  # list of (pred_count - true_count) for each image
 
 
-FEATURE_LIMIT = 4
 RESIZE_TO = (512,512)
 # Iterate over each image file in the images directory
 for filename in os.listdir(IMAGES_DIR):
@@ -67,12 +66,12 @@ for filename in os.listdir(IMAGES_DIR):
         continue
 
     # Load image using czifile (for .czi) or other methods for other formats
-    feat_map, image_npy = czi_to_fmap(czi_path=image_path, vgg_input_size=RESIZE_TO)
+    feat_map, image_npy = czi_to_fmap(czi_path=image_path, size=RESIZE_TO)
 
     H, W, _ = feat_map.shape
     flat = feat_map.reshape(-1, 128)
     transform_flat = transformer.transform(flat)
-
+    print(f"transform flat shape: {transform_flat.shape}")
     # Predict
     pred_flat = model.predict(transform_flat)  # shape: (H*W,)
     pred_map = pred_flat.reshape(H, W)  # reshape to 2D prediction map
