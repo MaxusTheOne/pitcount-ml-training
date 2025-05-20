@@ -151,12 +151,11 @@ def train_model(config: dict = None):
     if config.get("verbosity") > 1:
         print(f"CONFIG:")
         pprint(CONFIG)
+    if CONFIG["dry_run"]:
+        print(f"Dry run: skipping fitting.")
+        return
     uuids = get_uuids(output_dir, feature_source)
     train_ids, test_ids = split_uuids(uuids)
-    if CONFIG["dry_run"]:
-        print(f"Dry run: skipping actual processing.")
-        print(f"Would process {len(uuids)} image-label pairs.")
-        return
 
     if CONFIG["verbosity"]:
         print(f"📂 Using '{feature_source}' features from {output_dir / feature_source}")
