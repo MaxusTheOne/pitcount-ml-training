@@ -43,7 +43,7 @@ def evaluate_model(config: dict) -> None:
     model_path = model_folder / f"{config['model_name']}.joblib"
     transformer_path = model_folder / "transformer.joblib"
     output_dir = config['output_dir']
-    output_dir.mkdir(parents=True, exist_ok=True)
+
 
     data_dir = config['test_dir']
     images_dir = data_dir / "images"
@@ -61,7 +61,7 @@ def evaluate_model(config: dict) -> None:
 
     # Metrics
     ious, dices, count_errors = [], [], []
-    RESIZE_TO = config["resize_to"]
+    resize_to = config["resize_to"]
 
     for filename in os.listdir(images_dir):
         if not filename.lower().endswith((".czi", ".png", ".tif", ".tiff")):
@@ -81,7 +81,7 @@ def evaluate_model(config: dict) -> None:
             continue
 
         # feature map and raw image
-        feat_map, image_npy = czi_to_fmap(czi_path=str(image_path), size=RESIZE_TO)
+        feat_map, image_npy = czi_to_fmap(czi_path=str(image_path), size=resize_to)
         H, W, _ = feat_map.shape
         flat = feat_map.reshape(-1, feat_map.shape[-1])
         trans_flat = transformer.transform(flat)
