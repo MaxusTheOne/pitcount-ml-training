@@ -132,6 +132,7 @@ def prepare_training_data(training_settings: dict):
     max_images = training_settings.get('max_images', None)
     verbosity = training_settings.get('verbosity', 1)
     dry_run = training_settings.get('dry_run', False)
+    feature_source = training_settings.get('feature_source', 'reduced')
 
     # Create output directories
     raw_dir = output_dir / 'raw'
@@ -214,5 +215,14 @@ def prepare_training_data(training_settings: dict):
         red_out = red_dir / p.name.replace('_raw128', f'_feat{n_components}')
         np.save(red_out, fmap50.astype(np.float32))
         print(f"Saved reduced features: {red_out} shape={fmap50.shape}")
+
+    # 4) Cleanup
+    if not training_settings.get('keep_extra', False):
+        if feature_source != "raw":
+            raw_dir.rmdir()
+        if feature_source != "reduced":
+            red_dir.rmdir()
+        if feature_source != "masks":
+            mask_dir.rmdir()
 
     print("Training data preparation complete.")

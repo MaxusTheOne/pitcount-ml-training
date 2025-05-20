@@ -179,7 +179,6 @@ def main():
             f"_fl{config['feature_limit']}"
             f"_im{config['max_images']}"
             f"x{config['resize_to']}"
-            f"_nj{config['n_jobs']}"
             f"_{stamp}"
         )
         config["resize_to"] = (config["resize_to"],config["resize_to"])
