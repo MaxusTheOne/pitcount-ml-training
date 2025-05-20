@@ -28,8 +28,8 @@ except ImportError:
 
 # For simplicity, using fixed paths (could be replaced by args as shown above):
 DIR_PATH = Path(__file__).parent  # Directory of this script
-Model_FOLDER_PATH = DIR_PATH / "models" / "rf_model_light_2"
-MODEL_PATH = Model_FOLDER_PATH / "rf_model_light_2.joblib"
+Model_FOLDER_PATH = DIR_PATH / "models" / "rf_model_mid_2"
+MODEL_PATH = Model_FOLDER_PATH / "rf_model_mid.joblib"
 IMAGES_DIR = DIR_PATH / "test_data" / "Images"
 LABELS_DIR = DIR_PATH / "test_data" / "Labels"
 TRANSFORMER_PATH = Model_FOLDER_PATH / "transformer.joblib"
