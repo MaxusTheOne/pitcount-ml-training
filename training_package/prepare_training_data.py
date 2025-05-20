@@ -9,6 +9,7 @@ for downstream classifier training. Also converts binary ground-truth masks to .
 This module exposes a `prepare_training_data` function that accepts a single `training_settings` dict
 with all configuration parameters (and reasonable defaults), suitable for invocation by a pipeline.
 """
+import shutil
 from pathlib import Path
 import numpy as np
 import cv2
@@ -124,14 +125,15 @@ def prepare_training_data(training_settings: dict):
     labels_dir = Path(training_settings['input_dir']) / 'Labels'
     output_dir = Path(training_settings['output_dir'])
     models_dir = Path(training_settings['models_dir']) / training_settings['model_name']
-    n_components = training_settings.get('n_components', 50)
-    feature_limit = training_settings.get('feature_limit', 4)
-    random_state = training_settings.get('random_state', 42)
-    vgg_input_size = tuple(training_settings.get('resize_to', (256, 256)))
+    n_components = training_settings['n_components']
+    feature_limit = training_settings['feature_limit']
+    random_state = training_settings['random_seed']
+    vgg_input_size = tuple(training_settings['resize_to'])
 
-    max_images = training_settings.get('max_images', None)
-    verbosity = training_settings.get('verbosity', 1)
-    dry_run = training_settings.get('dry_run', False)
+    max_images = training_settings['max_images']
+    verbosity = training_settings['verbosity']
+    dry_run = training_settings['dry_run']
+
     feature_source = training_settings.get('feature_source', 'reduced')
 
     # Create output directories
@@ -199,9 +201,9 @@ def prepare_training_data(training_settings: dict):
         all_feats.append(arr.reshape(-1, C))
     X = np.vstack(all_feats)
     print(f"Fitting projector on data shape {X.shape}")
-    projector = GaussianRandomProjection(n_components="auto", random_state=random_state)
+    projector = GaussianRandomProjection(n_components=n_components, random_state=random_state)
     projector.fit(X)
-    transformer_path = models_dir / f"transformer_{feature_limit}.joblib"
+    transformer_path = models_dir / f"transformer.joblib"
     dump(projector, transformer_path)
     print(f"Saved transformer: {transformer_path}")
 
@@ -219,10 +221,9 @@ def prepare_training_data(training_settings: dict):
     # 4) Cleanup
     if not training_settings.get('keep_extra', False):
         if feature_source != "raw":
-            raw_dir.rmdir()
+            shutil.rmtree(raw_dir)
         if feature_source != "reduced":
-            red_dir.rmdir()
-        if feature_source != "masks":
-            mask_dir.rmdir()
+            shutil.rmtree(red_dir)
+
 
     print("Training data preparation complete.")

@@ -1,5 +1,6 @@
 /output/*
 /build/
+*_local
 models/
 *.egg-info
 __pycache__

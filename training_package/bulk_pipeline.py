@@ -4,52 +4,12 @@ Central training pipeline: prepares data and trains a RandomForest model.
 from os import makedirs
 from pathlib import Path
 from pprint import pprint
+import random
 
 from training_package.prepare_training_data import prepare_training_data
 from training_package.train_model_from_dataset import train_model
+from training_package.evaluate_model import evaluate_model
 import argparse
-medium_config = {
-    "feature_limit": 20,
-    "max_images": 8,
-    "n_estimators": 20,
-    "n_components": 25,
-    "max_depth": 5,
-    "n_jobs": -1,
-    "resize_to": (512, 512),
-    "skip_existing": False,
-    "verbosity": 2,
-    "random_seed": 0,
-    "model_name": "rf_model_mid"
-
-    }
-light_training_config = {
-    "feature_limit": 5,
-    "max_images": 6,
-    "n_estimators": 20,
-    "n_components": 10,
-    "max_depth": 5,
-    "n_jobs": -1,
-    "resize_to": (512, 512),
-    "skip_existing": False,
-    "verbosity": 2,
-    "random_seed": 0,
-    "model_name": "rf_model_light_2"
-}
-config_50 = {
-    "feature_limit": 50,
-    "max_images": None,
-    "n_estimators": 100,
-    "n_components": 50,
-    "max_depth": None,
-    "n_jobs": -1,
-    "verbosity": 2,
-    "random_seed": 42,
-    "resize_to": (1024, 1024),
-    "channel_index": 0,
-    "skip_existing": False,
-    "dry_run": False,
-    "model_name": "rf_model_50"
-}
 default_config = {
     "model_name": "rf_model_default",
     
@@ -126,17 +86,20 @@ def parse_args():
         help="Verbosity level: 0 (silent), 1 (info), 2 (detailed)"
     )
     p.add_argument(
-        "--input-dir", "-i", type=Path, default=Path.cwd() / "training_package" / "training_data",
+        "--input_dir", "-i", type=Path, default=Path.cwd() / "training_package" / "training_data",
         help="Path to input directory containing images and labels."
     )
-
     p.add_argument(
-        "--output-dir", "-o", type=Path, default=Path.cwd() / "output",
+        "--output_dir", "-o", type=Path, default=Path.cwd() / "output",
         help="(Optional) Path to output directory for trained model."
     )
     p.add_argument(
-        "--model-dir", "-m", type=Path, default=Path.cwd() / "models",
+        "--model_dir", "-m", type=Path, default=Path.cwd() / "models",
         help="(Optional) Path to output directory for trained model."
+    )
+    p.add_argument(
+        "--test_dir", "-t", type=Path, default=None,
+        help="(Optional) If set, runs an evaluation from the test dataset."
     )
 
 
@@ -161,13 +124,19 @@ def main():
 
     }
 
-    # iterate over the Cartesian product of all hyper-parameter lists
+    # iterate over the Cartesian product of all hyperparameter lists
     combos = list(itertools.product(*param_grid.values()))
     total = len(combos)
     print(f"Starting {total} runs")
     for idx, combo in enumerate(combos, start=1):
         # map back to parameter names
         config = dict(zip(param_grid.keys(), combo))
+
+        if config["feature_limit"] > config["n_components"]:
+            config["feature_limit"] = config["n_components"]
+        if config["random_seed"] == 0:
+            seed = random.randint(1, 1000)
+            config["random_seed"] = seed
 
         # give each run a unique folder/name
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -187,6 +156,7 @@ def main():
         config["models_dir"] = args.model_dir
         config["model_folder"] = args.model_dir / config["model_name"]
         config["output_dir"] = args.output_dir / config["model_name"]
+        config["test_dir"] = args.test_dir
 
         config["models_dir"].mkdir(parents=True, exist_ok=True)
         config["model_folder"].mkdir(parents=False, exist_ok=True)
@@ -200,6 +170,10 @@ def main():
             continue
         prepare_training_data(run_config)
         train_model(run_config)
+        if config["test_dir"]:
+            evaluate_model(run_config)
+        else:
+            print("No test path set")
 
 if __name__ == "__main__":
     main()

@@ -148,7 +148,7 @@ def train_model(config: dict = None):
     models_dir = CONFIG["models_dir"]
     model_folder = config.get("model_folder", models_dir / CONFIG["model_name"])
     model_folder.mkdir(parents=True, exist_ok=True)
-    if config.get("verbosity") > 1:
+    if config.get("verbosity") > 2:
         print(f"CONFIG:")
         pprint(CONFIG)
     if CONFIG["dry_run"]:
