@@ -4,5 +4,5 @@ models/
 *.egg-info
 __pycache__
 /training_package/test_data
-
+.idea
 training_data

@@ -131,6 +131,7 @@ def prepare_training_data(training_settings: dict):
 
     max_images = training_settings.get('max_images', None)
     verbosity = training_settings.get('verbosity', 1)
+    dry_run = training_settings.get('dry_run', False)
 
     # Create output directories
     raw_dir = output_dir / 'raw'
@@ -152,6 +153,11 @@ def prepare_training_data(training_settings: dict):
             print(f"🔍 Limiting to {max_images} image-label pairs")
     else:
         images = list(images_dir.iterdir())
+
+    if dry_run:
+        print(f"Dry run: skipping actual processing.")
+        print(f"Would process {len(images)} image-label pairs.")
+        return
 
     # 1) Process each UUID folder: image + mask
     for uid_folder in images:

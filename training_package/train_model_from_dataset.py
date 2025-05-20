@@ -131,14 +131,15 @@ def train_model(config: dict = None):
             "n_estimators": config.get("n_estimators", CONFIG.get("n_estimators")),
             "n_components": config.get("n_components", CONFIG.get("n_components")),
             "max_depth": config.get("max_depth", CONFIG.get("max_depth")),
-            "n_jobs": config.get("n_jobs", CONFIG.get("n_jobs")),
             # 'verbosity' key maps to 'verbosity'
-            "verbosity": config.get("verbosity", CONFIG.get("verbosity")),
             "random_seed": config.get("random_seed", CONFIG.get("random_seed")),
             "model_name": config.get("model_name", CONFIG.get("model_name")),
             "out_dir": config.get("output_dir", PROCESSED_DIR),
             "models_dir": config.get("models_dir", Path(__file__).parent / "models"),
             "feature_source": config.get("feature_source", "reduced"),
+            "n_jobs": config.get("n_jobs", CONFIG.get("n_jobs")),
+            "verbosity": config.get("verbosity", CONFIG.get("verbosity")),
+            "dry_run": config.get("dry_run", CONFIG.get("dry_run")),
 
         })
     output_dir = CONFIG["out_dir"]
@@ -152,6 +153,10 @@ def train_model(config: dict = None):
         pprint(CONFIG)
     uuids = get_uuids(output_dir, feature_source)
     train_ids, test_ids = split_uuids(uuids)
+    if CONFIG["dry_run"]:
+        print(f"Dry run: skipping actual processing.")
+        print(f"Would process {len(uuids)} image-label pairs.")
+        return
 
     if CONFIG["verbosity"]:
         print(f"📂 Using '{feature_source}' features from {output_dir / feature_source}")
