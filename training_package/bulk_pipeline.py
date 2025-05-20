@@ -48,11 +48,11 @@ def parse_args():
     p = argparse.ArgumentParser(
         description="Grid-search wrapper around train_model_from_dataset.py"
     )
-    # allow arbitrary lists on the CLI, e.g. --n-estimators 50 100 200
+
     p.add_argument(
         "--n_estimators", nargs="+", type=int, default=[50, 100, 200],
         help="Number of trees in the forest"
-    )
+    ) # The number of trees in the forest
     p.add_argument(
         "--n_components", nargs="+", type=int, default=[10, 20, 50],
         help="Number of components for GaussianRandomProjection"
@@ -70,12 +70,15 @@ def parse_args():
         help="Size of resized image feature maps"
     )
     p.add_argument(
-        "--max_images", nargs="+", type=int, default=[10, 20, None],
+        "--max_images", type=int, default=10,
         help="Maximum number of images to process"
     )
     p.add_argument(
         "--n_jobs", type=int, default=[1, 2, -1],
         help="Parallel jobs"
+    )
+    p.add_argument(
+        "--random_seed", type=int, default=0,
     )
     p.add_argument(
         "--dry_run", action="store_true", default=False,
@@ -105,75 +108,99 @@ def parse_args():
 
     return p.parse_args()
 
+def make_image_proc_name(ip_config):
+    # Example: img256_nc20
+    return f"img{ip_config['resize_to']}_nc{ip_config['n_components']}"
+
+def make_train_name(tr_config):
+    # Example: ne100_md20_fl50
+    return f"ne{tr_config['n_estimators']}_md{tr_config['max_depth']}_fl{tr_config['feature_limit']}"
+
 def main():
     args = parse_args()
     dry_run = False
 
-    # build a dict of name→list_of_values
-    param_grid = {
-        "n_estimators": args.n_estimators,
-        "n_components": args.n_components,
-        "max_depth": args.max_depth,
-        "feature_limit": args.feature_limit,
-        "n_jobs": [args.n_jobs],
-        "max_images": args.max_images,
-        "image_size": args.image_size,
-        "resize_to": args.image_size,
-        "verbosity": [args.verbosity],
-        "dry_run": [args.dry_run],
+    resize_to = (args.image_size, args.image_size)
 
+    image_processing_iter_params = {
+        "resize_to": resize_to,
+        "n_components": args.n_components,
+    }
+    image_processing_params = {
+        "max_images": args.max_images,
+        "input_dir": args.input_dir,
+        "verbosity": args.verbosity,
+        "dry_run": args.dry_run,
+        "random_seed": args.random_seed,
     }
 
-    # iterate over the Cartesian product of all hyperparameter lists
-    combos = list(itertools.product(*param_grid.values()))
-    total = len(combos)
-    print(f"Starting {total} runs")
-    for idx, combo in enumerate(combos, start=1):
-        # map back to parameter names
-        config = dict(zip(param_grid.keys(), combo))
+    training_iter_params = {
+        "feature_limit": args.feature_limit,
+        "n_estimators": args.n_estimators,
+        "max_depth": args.max_depth,
+    }
+    training_params = {
+        "verbosity": args.verbosity,
+        "dry_run": args.dry_run,
+        "n_jobs": args.n_jobs,
+        "random_seed": args.random_seed,
+    }
 
-        if config["feature_limit"] > config["n_components"]:
-            config["feature_limit"] = config["n_components"]
-        if config["random_seed"] == 0:
-            seed = random.randint(1, 1000)
-            config["random_seed"] = seed
+    output_dir = args.output_dir
+    model_dir = args.model_dir
 
-        # give each run a unique folder/name
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # e.g. rf_ne50_md20_fl100_nj2_20250519_235501
-        config["model_name"] = (
-            f"rf_ne{config['n_estimators']}"
-            f"_md{config['n_components']}"
-            f"_md{config['max_depth']}"
-            f"_fl{config['feature_limit']}"
-            f"_im{config['max_images']}"
-            f"x{config['resize_to']}"
-            f"_{stamp}"
-        )
-        config["resize_to"] = (config["resize_to"],config["resize_to"])
+    image_processing_combos = list(itertools.product(*image_processing_iter_params.values()))
+    training_combos = list(itertools.product(*training_iter_params.values()))
 
-        config["input_dir"] = args.input_dir
-        config["models_dir"] = args.model_dir
-        config["model_folder"] = args.model_dir / config["model_name"]
-        config["output_dir"] = args.output_dir / config["model_name"]
-        config["test_dir"] = args.test_dir
+    total = len(image_processing_combos) * len(training_combos)
+    idx = 0
+    for ip_combo in image_processing_combos:
+        ip_config = dict(zip(image_processing_iter_params.keys(), ip_combo))
+        img_folder_name = make_image_proc_name(ip_config)
+        processed_dir = output_dir / img_folder_name
+        export_dir = model_dir / img_folder_name
 
-        config["models_dir"].mkdir(parents=True, exist_ok=True)
-        config["model_folder"].mkdir(parents=False, exist_ok=True)
-        config["output_dir"].mkdir(parents=True, exist_ok=True)
+        if image_processing_params["random_seed"] == 0:
+            if image_processing_params["random_seed"] == 0:
+                seed = random.randint(1, 1000)
+                image_processing_params["random_seed"] = seed
 
-        run_config = {**default_config, **config}
-        print(f"[{idx}/{total}] starting run: Config:")
-        pprint(run_config)
+        # Prepare data
+        prep_config = {
+            **image_processing_params,
+            **ip_config,
+            "output_dir": processed_dir,
+            "export_dir": export_dir,
+        }
         if dry_run:
-            print("Dry run bulk_pipeline: skipping training")
-            continue
-        prepare_training_data(run_config)
-        train_model(run_config)
-        if config["test_dir"]:
-            evaluate_model(run_config)
+            print(f"[DRY RUN] Would prepare data in {processed_dir} with {ip_config}")
         else:
-            print("No test path set")
+            prepare_training_data(prep_config)
 
+        for tr_combo in training_combos:
+            tr_config = dict(zip(training_iter_params.keys(), tr_combo))
+            train_folder_name = make_train_name(tr_config)
+            model_name = f"{img_folder_name}_{train_folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            if training_params["random_seed"] == 0:
+                seed = random.randint(1, 1000)
+                training_params["random_seed"] = seed
+
+            run_config = {
+                **default_config,
+                **prep_config,
+                **training_params,
+                **tr_config,
+                "model_name": model_name,
+                "output_dir": processed_dir,
+                "models_dir": export_dir,
+            }
+            idx += 1
+            if dry_run:
+                print(f"[{idx}/{total}] [DRY RUN] Would train model {model_name} using data from {processed_dir} with {tr_config}")
+            else:
+                train_model(run_config)
+                if args.test_dir:
+                    evaluate_model(run_config)
 if __name__ == "__main__":
     main()

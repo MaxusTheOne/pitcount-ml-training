@@ -121,20 +121,27 @@ def prepare_training_data(training_settings: dict):
       4. Saves the fitted transformer.
       5. Applies transformer to each raw map and saves the reduced features.
     """
+
+    #Path settings
     images_dir = Path(training_settings['input_dir']) / 'Images'
     labels_dir = Path(training_settings['input_dir']) / 'Labels'
     output_dir = Path(training_settings['output_dir'])
-    models_dir = Path(training_settings['models_dir']) / training_settings['model_name']
-    n_components = training_settings['n_components']
-    feature_limit = training_settings['feature_limit']
-    random_state = training_settings['random_seed']
-    vgg_input_size = tuple(training_settings['resize_to'])
+    models_dir = Path(training_settings['export_dir'])
 
-    max_images = training_settings['max_images']
+    #Set settings
     verbosity = training_settings['verbosity']
     dry_run = training_settings['dry_run']
-
     feature_source = training_settings.get('feature_source', 'reduced')
+
+    #Iterable settings
+    n_components = training_settings['n_components']
+    vgg_input_size = training_settings['resize_to']
+    max_images = training_settings['max_images']
+
+    random_state = training_settings['random_seed']
+
+    if verbosity > 1:
+        print(f"Image processing config: {training_settings}")
 
     # Create output directories
     raw_dir = output_dir / 'raw'
@@ -213,10 +220,10 @@ def prepare_training_data(training_settings: dict):
         H, W, C = arr.shape
         flat = arr.reshape(-1, C)
         red = projector.transform(flat)
-        fmap50 = red.reshape(H, W, n_components)
+        reduced_feat = red.reshape(H, W, n_components)
         red_out = red_dir / p.name.replace('_raw128', f'_feat{n_components}')
-        np.save(red_out, fmap50.astype(np.float32))
-        print(f"Saved reduced features: {red_out} shape={fmap50.shape}")
+        np.save(red_out, reduced_feat.astype(np.float32))
+        print(f"Saved reduced features: {red_out} shape={reduced_feat.shape}")
 
     # 4) Cleanup
     if not training_settings.get('keep_extra', False):

@@ -22,6 +22,7 @@ CONFIG: dict[str, Any] = {
     "verbosity": 1,                 # Verbosity level (0 = silent, 1 = some output, 2 = detailed) | Default: 0 | Affects CPU
     "random_seed": 42,
     "model_name": "rf_model",       # Model name for saving | Default: "rf_model"
+    "eval_smol": False,
 }
 
 
@@ -74,10 +75,6 @@ def load_dataset(
             continue
         y = np.load(mask_path)
 
-        # # Feature limit
-        # if CONFIG["feature_limit"] is not None and X.ndim == 3:
-        #     X = X[..., :CONFIG["feature_limit"]]
-
         # Flatten
         X_flat = X.reshape(-1, X.shape[-1])
         y_flat = y.flatten()
@@ -95,15 +92,15 @@ def load_dataset(
 
 
 
-def train_rf_classifier(X_train, y_train):
+def train_rf_classifier(X_train, y_train, config: dict = None):
     clf = RandomForestClassifier(
-        n_estimators=CONFIG["n_estimators"],
-        max_features=CONFIG["feature_limit"],
-        max_depth=CONFIG["max_depth"],
+        n_estimators=config["n_estimators"],
+        max_features=config["feature_limit"],
+        max_depth=config["max_depth"],
         class_weight="balanced",
-        n_jobs=CONFIG["n_jobs"],
-        random_state=CONFIG["random_seed"],
-        verbose=CONFIG["verbosity"]
+        n_jobs=config["n_jobs"],
+        random_state=config["random_seed"],
+        verbose=config["verbosity"]
     )
     print(f"X_train 0 shape: {X_train.shape}")
     clf.fit(X_train, y_train)
@@ -125,22 +122,22 @@ def train_model(config: dict = None):
     # Override module CONFIG if custom settings provided
     if config:
         CONFIG.update({
-            "feature_limit": config.get("feature_limit", CONFIG.get("feature_limit")),
-            "max_images": config.get("max_images", CONFIG.get("max_images")),
-            "resize_to": config.get("resize_to", CONFIG.get("resize_to")),
-            "n_estimators": config.get("n_estimators", CONFIG.get("n_estimators")),
-            "n_components": config.get("n_components", CONFIG.get("n_components")),
-            "max_depth": config.get("max_depth", CONFIG.get("max_depth")),
-            # 'verbosity' key maps to 'verbosity'
-            "random_seed": config.get("random_seed", CONFIG.get("random_seed")),
             "model_name": config.get("model_name", CONFIG.get("model_name")),
             "out_dir": config.get("output_dir", PROCESSED_DIR),
             "models_dir": config.get("models_dir", Path(__file__).parent / "models"),
-            "feature_source": config.get("feature_source", "reduced"),
             "n_jobs": config.get("n_jobs", CONFIG.get("n_jobs")),
             "verbosity": config.get("verbosity", CONFIG.get("verbosity")),
             "dry_run": config.get("dry_run", CONFIG.get("dry_run")),
+            "feature_source": config.get("feature_source", "reduced"),
+            "max_images": config.get("max_images", CONFIG.get("max_images")),
 
+            "n_estimators": config.get("n_estimators", CONFIG.get("n_estimators")),
+            "max_depth": config.get("max_depth", CONFIG.get("max_depth")),
+            "feature_limit": config.get("feature_limit", CONFIG.get("feature_limit")),
+
+            "n_components": config.get("n_components", CONFIG.get("n_components")),
+            "random_seed": config.get("random_seed", CONFIG.get("random_seed")),
+            "resize_to": config.get("resize_to", CONFIG.get("resize_to")),
         })
     output_dir = CONFIG["out_dir"]
     feature_source = CONFIG["feature_source"]
@@ -168,15 +165,17 @@ def train_model(config: dict = None):
         print(f"✅ Loaded train shape {X_train.shape}, test shape {X_test.shape}")
 
 
-    clf = train_rf_classifier(X_train, y_train)
-    evaluate_model(clf, X_test, y_test)
+    clf = train_rf_classifier(X_train, y_train, config=CONFIG)
+
+    if CONFIG["eval_smol"]:
+        evaluate_model(clf, X_test, y_test)
 
     # Save model and metadata
     model_path = model_folder / (CONFIG["model_name"] + ".joblib")
     joblib.dump(clf, model_path)
-    meta = {k: CONFIG[k] for k in ["feature_source", "feature_limit", "n_estimators", "n_components", "max_depth", "random_seed", "resize_to"]}
-    with open(model_folder / (CONFIG["model_name"] + "_metadata.json"), 'w') as f:
-        json.dump(meta, f, indent=2)
+    # meta = {k: CONFIG[k] for k in ["feature_source", "feature_limit", "n_estimators", "n_components", "max_depth", "random_seed", "resize_to"]}
+    # with open(model_folder / (CONFIG["model_name"] + "_metadata.json"), 'w') as f:
+    #     json.dump(meta, f, indent=2)
 
     if CONFIG["verbosity"]:
         print(f"✅ Model saved to {model_path}")
@@ -201,5 +200,5 @@ def _plot_prediction(image, label_mask, pred_mask):
 
 if __name__ == "__main__":
     # Limit to first 2 features for testing
-    train_model()
+    print(f"How did you get here?")
 
