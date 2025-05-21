@@ -106,7 +106,6 @@ def prepare_training_data(training_settings: dict):
       - images_dir: Path to UUID-folders with images (must provide)
       - labels_dir: Path to UUID-folders with binary masks (must provide)
       - processed_dir: Path under which 'raw/', 'reduced/', and 'masks/' will be created (must provide)
-      - models_dir: Path where transformer will be saved (must provide)
       - n_components: int, default 50
       - random_state: int, default 42
       - vgg_input_size: tuple (H, W), default (256, 256)
@@ -125,8 +124,7 @@ def prepare_training_data(training_settings: dict):
     #Path settings
     images_dir = Path(training_settings['input_dir']) / 'Images'
     labels_dir = Path(training_settings['input_dir']) / 'Labels'
-    output_dir = Path(training_settings['output_dir'])
-    models_dir = Path(training_settings['export_dir'])
+    data_folder = Path(training_settings['data_folder'])
 
     #Set settings
     verbosity = training_settings['verbosity']
@@ -144,13 +142,12 @@ def prepare_training_data(training_settings: dict):
         print(f"Image processing config: {training_settings}")
 
     # Create output directories
-    raw_dir = output_dir / 'raw'
-    red_dir = output_dir / 'reduced'
-    mask_dir = output_dir / 'masks'
+    raw_dir = data_folder / 'raw'
+    red_dir = data_folder / 'reduced'
+    mask_dir = data_folder / 'masks'
     raw_dir.mkdir(parents=True, exist_ok=True)
     red_dir.mkdir(parents=True, exist_ok=True)
     mask_dir.mkdir(parents=True, exist_ok=True)
-    models_dir.mkdir(parents=True, exist_ok=True)
 
     if verbosity > 1:
         print(f"🔍 Image/Label directories: {images_dir}, {labels_dir}")
@@ -212,7 +209,7 @@ def prepare_training_data(training_settings: dict):
         print(f"Fitting projector on data shape {X.shape}")
     projector = GaussianRandomProjection(n_components=n_components, random_state=random_state)
     projector.fit(X)
-    transformer_path = models_dir / f"transformer.joblib"
+    transformer_path = data_folder / f"transformer.joblib"
     dump(projector, transformer_path)
     if verbosity > 1:
         print(f"Saved transformer: {transformer_path}")

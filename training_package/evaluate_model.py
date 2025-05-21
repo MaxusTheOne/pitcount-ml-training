@@ -25,7 +25,6 @@ def evaluate_model(config: dict) -> None:
 
     Args:
         config (dict): Configuration dictionary with keys:
-            - models_dir (str or Path): Base directory containing all model folders.
             - model_folder (str): Sub-directory under models_dir for the specific model.
             - model_name (str): Filename (without extension) of the saved model (joblib format).
             - output_dir (str or Path): Directory where evaluation stats will be saved.
@@ -38,30 +37,34 @@ def evaluate_model(config: dict) -> None:
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-    models_dir = config['models_dir']
-    model_folder = models_dir / config['model_folder']
-    model_path = model_folder / f"{config['model_name']}.joblib"
-    transformer_path = model_folder / "transformer.joblib"
-    output_dir = config['output_dir']
+    model_file = config["model_file_path"]
+    transformer_path = config["data_folder"] / "transformer.joblib"
+    output_dir = config['model_folder']
 
+    test_data_dir = config['test_dir']
+    images_dir = test_data_dir / "images"
+    labels_dir = test_data_dir / 'labels'
 
-    data_dir = config['test_dir']
-    images_dir = data_dir / "images"
-    labels_dir = data_dir / 'labels'
+    model_name_short = config["model_name_short"]
+    model_name = config["model_name"]
+    verbosity = config["verbosity"]
+    resize_to = config["resize_to"]
 
     if config["dry_run"]:
         print("Dry run: skipping actual evaluation.")
         return
 
     # Load model and transformer
-    model = load(model_path)
-    logging.info(f"Loaded model from {model_path}")
+    model = load(model_file)
+    if verbosity > 1:
+        logging.info(f"Loaded model from {model_file}")
     transformer = load(transformer_path)
-    logging.info(f"Loaded transformer from {transformer_path}")
+    if verbosity > 1:
+        logging.info(f"Loaded transformer from {transformer_path}")
 
     # Metrics
     ious, dices, count_errors = [], [], []
-    resize_to = config["resize_to"]
+    
 
     for filename in os.listdir(images_dir):
         if not filename.lower().endswith((".czi", ".png", ".tif", ".tiff")):
@@ -135,21 +138,25 @@ def evaluate_model(config: dict) -> None:
     mae_count = float(np.mean(np.abs(count_errors)))
     bias_count = float(np.mean(count_errors))
 
-    logging.info(f"Mean IoU: {mean_iou:.4f}")
-    logging.info(f"Mean Dice: {mean_dice:.4f}")
-    logging.info(f"MAE Count: {mae_count:.2f}")
-    logging.info(f"Bias Count: {bias_count:.2f}")
+    if verbosity > 1:
+        logging.info(f"Mean IoU: {mean_iou:.4f}")
+        logging.info(f"Mean Dice: {mean_dice:.4f}")
+        logging.info(f"MAE Count: {mae_count:.2f}")
+        logging.info(f"Bias Count: {bias_count:.2f}")
+    if verbosity == 1:
+        print(f"Mean IoU: {mean_iou:.4f}")
 
     # save stats
     stats = {
-        "model": f"{config['model_name']}",
+        "model": f"{model_name}",
         "mean_iou": mean_iou,
         "mean_dice": mean_dice,
         "mae_count": mae_count,
         "bias_count": bias_count
     }
-    stats_path = Path(output_dir) / f"{config['model_name']}_evaluation_stats.json"
+    stats_path = Path(output_dir) / f"{model_name_short}_evaluation_stats.json"
     with open(stats_path, 'w') as f:
         json.dump(stats, f, indent=4)
-    logging.info(f"Saved evaluation stats to {stats_path}")
+    if verbosity > 1:    
+        logging.info(f"Saved evaluation stats to {stats_path}")
 

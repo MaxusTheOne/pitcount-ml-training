@@ -90,6 +90,11 @@ def load_dataset(
 
 
 def train_rf_classifier(X_train, y_train, config: dict = None):
+    if config["verbosity"] > 1:
+        verbose = 2
+    else:
+        verbose = 0 
+
     clf = RandomForestClassifier(
         n_estimators=config["n_estimators"],
         max_features=config["feature_limit"],
@@ -97,9 +102,8 @@ def train_rf_classifier(X_train, y_train, config: dict = None):
         class_weight="balanced",
         n_jobs=config["n_jobs"],
         random_state=config["random_seed"],
-        verbose=config["verbosity"]
+        verbose=verbose
     )
-    print(f"X_train 0 shape: {X_train.shape}")
     clf.fit(X_train, y_train)
     return clf
 
@@ -118,8 +122,6 @@ def train_model(config: dict = None):
     if config:
         CONFIG.update({
             "model_name": config.get("model_name", CONFIG.get("model_name")),
-            "out_dir": config["output_dir"],
-            "models_dir": config.get("models_dir", Path(__file__).parent / "models"),
             "n_jobs": config.get("n_jobs", CONFIG.get("n_jobs")),
             "verbosity": config.get("verbosity", CONFIG.get("verbosity")),
             "dry_run": config.get("dry_run", CONFIG.get("dry_run")),
@@ -134,14 +136,13 @@ def train_model(config: dict = None):
             "random_seed": config.get("random_seed", CONFIG.get("random_seed")),
             "resize_to": config.get("resize_to", CONFIG.get("resize_to")),
         })
-    output_dir = CONFIG["out_dir"]
-    feature_source = CONFIG["feature_source"]
+    data_folder = config["data_folder"]
+    feature_source = config["feature_source"]
 
-    models_dir = CONFIG["models_dir"]
-    model_folder = config.get("model_folder", models_dir / CONFIG["model_name"])
-    model_folder.mkdir(parents=True, exist_ok=True)
+    model_folder = config["model_folder"]
+    model_file_path = config["model_file_path"]
 
-    verbosity = CONFIG["verbosity"]
+    verbosity = config["verbosity"]
 
     if verbosity > 2:
         print(f"CONFIG:")
@@ -149,15 +150,15 @@ def train_model(config: dict = None):
     if CONFIG["dry_run"]:
         print(f"Dry run: skipping fitting.")
         return
-    uuids = get_uuids(output_dir, feature_source)
+    uuids = get_uuids(data_folder, feature_source)
     train_ids, test_ids = split_uuids(uuids)
 
     if verbosity > 1:
-        print(f"📂 Using '{feature_source}' features from {output_dir / feature_source}")
+        print(f"📂 Using '{feature_source}' features from {data_folder / feature_source}")
         print(f"🎲 Training on {len(train_ids)}, testing on {len(test_ids)} samples")
 
-    X_train, y_train = load_dataset(train_ids, output_dir, feature_source)
-    X_test, y_test = load_dataset(test_ids, output_dir, feature_source)
+    X_train, y_train = load_dataset(train_ids, data_folder, feature_source)
+    X_test, y_test = load_dataset(test_ids, data_folder, feature_source)
 
     if verbosity > 1:
         print(f"✅ Loaded train shape {X_train.shape}, test shape {X_test.shape}")
@@ -169,15 +170,14 @@ def train_model(config: dict = None):
         evaluate_model(clf, X_test, y_test)
 
     # Save model and metadata
-    model_path = model_folder / (CONFIG["model_name"] + ".joblib")
-    joblib.dump(clf, model_path)
+    joblib.dump(clf, model_file_path)
     # meta = {k: CONFIG[k] for k in ["feature_source", "feature_limit", "n_estimators", "n_components", "max_depth", "random_seed", "resize_to"]}
     # with open(model_folder / (CONFIG["model_name"] + "_metadata.json"), 'w') as f:
     #     json.dump(meta, f, indent=2)
 
     if verbosity > 1:
-        print(f"✅ Model saved to {model_path}")
-        print(f"✅ Metadata saved to {model_folder}")
+        print(f"✅ Model saved to {model_file_path}")
+        print(f"✅ Metadata saved to {model_file_path}")
 
 
 if __name__ == "__main__":

@@ -108,10 +108,9 @@ def main():
     args = parse_args()
     dry_run = False
 
-    resize_to = (args.image_size, args.image_size)
 
     image_processing_iter_params = {
-        "resize_to": resize_to,
+        "resize_to": args.image_size,
         "n_components": args.n_components,
     }
     image_processing_params = {
@@ -142,15 +141,24 @@ def main():
     image_processing_combos = list(itertools.product(*image_processing_iter_params.values()))
     training_combos = list(itertools.product(*training_iter_params.values()))
 
-    total = len(image_processing_combos) * len(training_combos)
+    total_ic = len(image_processing_combos)
+    total_tc = len(training_combos)
+    total = total_ic * total_tc
+
+    print(f"Launching Bulk Training, processing {total_ic} VGG19 feature sets \n         with {total_tc} RFC each \n             Totaling {total} fits")
+
     idx = 0
     for ip_combo in image_processing_combos:
-        if verbosity > 0:
-            print(f"[{idx}/{total}]")
+        idx += 1
         ip_config = dict(zip(image_processing_iter_params.keys(), ip_combo))
         img_folder_name = make_image_proc_name(ip_config)
-        processed_dir = output_dir / img_folder_name
-        export_dir = model_dir / img_folder_name
+        data_folder = model_dir / img_folder_name
+        data_folder.mkdir(parents=True, exist_ok=True)
+
+        if verbosity > 0:
+            print(f"[{idx}/{total_ic}] dataset: {img_folder_name}")
+
+        ip_config["resize_to"] = (ip_config["resize_to"], ip_config["resize_to"])
 
         if image_processing_params["random_seed"] == 0:
             if image_processing_params["random_seed"] == 0:
@@ -161,24 +169,23 @@ def main():
         prep_config = {
             **image_processing_params,
             **ip_config,
-            "output_dir": processed_dir,
-            "export_dir": export_dir,
+            "data_folder": data_folder,
         }
         if dry_run:
             print(f"[DRY RUN] Would prepare data in {processed_dir} with {ip_config}")
         else:
             prepare_training_data(prep_config)
-            if verbosity > 0:
-                print(f"Processed data set: {img_folder_name}")
-
+        ydx = 0
         for tr_combo in training_combos:
+            ydx += 1
+            if verbosity > 0:
+                print(f"[{idx}/{total_ic}][{ydx}/{total_tc}] model: {train_folder_name}")
             tr_config = dict(zip(training_iter_params.keys(), tr_combo))
             train_folder_name = make_train_name(tr_config)
             model_name = f"{img_folder_name}_{train_folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-            if training_params["random_seed"] == 0:
-                seed = random.randint(1, 1000)
-                training_params["random_seed"] = seed
+            model_folder = data_folder / train_folder_name
+            model_file_path = model_folder / (model_name + ".joblib")
+            model_folder.mkdir(parents=True, exist_ok=True)
 
             run_config = {
                 **default_config,
@@ -186,17 +193,17 @@ def main():
                 **training_params,
                 **tr_config,
                 "model_name": model_name,
-                "output_dir": processed_dir,
-                "models_dir": export_dir,
+                "model_name_short": train_folder_name,
+
+                "model_folder": model_folder,
+                "model_file_path": model_file_path,
             }
-            idx += 1
+            
             if dry_run:
                 print(f" [DRY RUN] Would train model {model_name} using data from {processed_dir} with {tr_config}")
             else:
                 train_model(run_config)
-                if verbosity > 0:
-                    print(f"Trained model: {train_folder_name}")
                 if args.test_dir:
-                    evaluate_model(run_config)
+                    evaluate_model({**run_config, "test_dir": args.test_dir})
 if __name__ == "__main__":
     main()
