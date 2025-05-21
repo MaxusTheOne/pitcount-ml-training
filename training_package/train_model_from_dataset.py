@@ -26,9 +26,6 @@ CONFIG: dict[str, Any] = {
 }
 
 
-# --- Paths ---
-PROCESSED_DIR = Path(__file__).parent / "training_data" / "processed"
-
 def get_uuids(processed_dir: Path, feature_source: str) -> list[str]:
     """
     List UUIDs based on feature files in processed_dir/feature_source.
@@ -114,8 +111,6 @@ def evaluate_model(clf, X_test, y_test):
     print("\n📊 Evaluation on held-out test set:")
     print(classification_report(y_test, y_pred, digits=4))
 
-    if CONFIG.get("show_prediction_in_eval"):
-        _plot_prediction(X_test[0], y_test[0], y_pred[0])
 
 
 def train_model(config: dict = None):
@@ -123,7 +118,7 @@ def train_model(config: dict = None):
     if config:
         CONFIG.update({
             "model_name": config.get("model_name", CONFIG.get("model_name")),
-            "out_dir": config.get("output_dir", PROCESSED_DIR),
+            "out_dir": config["output_dir"],
             "models_dir": config.get("models_dir", Path(__file__).parent / "models"),
             "n_jobs": config.get("n_jobs", CONFIG.get("n_jobs")),
             "verbosity": config.get("verbosity", CONFIG.get("verbosity")),
@@ -145,7 +140,10 @@ def train_model(config: dict = None):
     models_dir = CONFIG["models_dir"]
     model_folder = config.get("model_folder", models_dir / CONFIG["model_name"])
     model_folder.mkdir(parents=True, exist_ok=True)
-    if config.get("verbosity") > 2:
+
+    verbosity = CONFIG["verbosity"]
+
+    if verbosity > 2:
         print(f"CONFIG:")
         pprint(CONFIG)
     if CONFIG["dry_run"]:
@@ -154,14 +152,14 @@ def train_model(config: dict = None):
     uuids = get_uuids(output_dir, feature_source)
     train_ids, test_ids = split_uuids(uuids)
 
-    if CONFIG["verbosity"]:
+    if verbosity > 1:
         print(f"📂 Using '{feature_source}' features from {output_dir / feature_source}")
         print(f"🎲 Training on {len(train_ids)}, testing on {len(test_ids)} samples")
 
     X_train, y_train = load_dataset(train_ids, output_dir, feature_source)
     X_test, y_test = load_dataset(test_ids, output_dir, feature_source)
 
-    if CONFIG["verbosity"]:
+    if verbosity > 1:
         print(f"✅ Loaded train shape {X_train.shape}, test shape {X_test.shape}")
 
 
@@ -177,26 +175,10 @@ def train_model(config: dict = None):
     # with open(model_folder / (CONFIG["model_name"] + "_metadata.json"), 'w') as f:
     #     json.dump(meta, f, indent=2)
 
-    if CONFIG["verbosity"]:
+    if verbosity > 1:
         print(f"✅ Model saved to {model_path}")
         print(f"✅ Metadata saved to {model_folder}")
 
-def _plot_prediction(image, label_mask, pred_mask):
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-    ax[0].imshow(image)
-    ax[0].set_title("Image")
-    ax[0].axis("off")
-
-    ax[1].imshow(label_mask, cmap="gray")
-    ax[1].set_title("Label Mask")
-    ax[1].axis("off")
-
-    ax[2].imshow(pred_mask, cmap="gray")
-    ax[2].set_title("Predicted Mask")
-    ax[2].axis("off")
-
-    plt.show()
 
 if __name__ == "__main__":
     # Limit to first 2 features for testing

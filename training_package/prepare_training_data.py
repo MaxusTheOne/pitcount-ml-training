@@ -152,14 +152,14 @@ def prepare_training_data(training_settings: dict):
     mask_dir.mkdir(parents=True, exist_ok=True)
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    if verbosity > 0:
+    if verbosity > 1:
         print(f"🔍 Image/Label directories: {images_dir}, {labels_dir}")
     raw_paths = []
     # 0) Cut down to max_images if needed
     if max_images is not None:
         images = list(images_dir.iterdir())
         images = images[:max_images]
-        if verbosity > 0:
+        if verbosity > 1:
             print(f"🔍 Limiting to {max_images} image-label pairs")
     else:
         images = list(images_dir.iterdir())
@@ -181,7 +181,8 @@ def prepare_training_data(training_settings: dict):
         lbl_folder = labels_dir / uid
         masks = list(lbl_folder.glob('*.czi'))
         if len(masks) != 1 or len(image) != 1:
-            print(f"Skipping {uid}: expected 1 image and 1 mask, found {len(image)} and {len(masks)}")
+            if verbosity > 0:
+                print(f"Skipping {uid}: expected 1 image and 1 mask, found {len(image)} and {len(masks)}")
             continue
         mask_path = masks[0]
 
@@ -197,7 +198,7 @@ def prepare_training_data(training_settings: dict):
         np.save(raw_out, fmap)
         raw_paths.append(raw_out)
 
-        if verbosity > 0:
+        if verbosity > 1:
             print(f"Processed {uid}: image shape={gray.shape}, mask shape={mask.shape}, \nfeatures shape={fmap.shape}")
 
     # 2) Fit projection on pooled features
@@ -207,12 +208,14 @@ def prepare_training_data(training_settings: dict):
         H, W, C = arr.shape
         all_feats.append(arr.reshape(-1, C))
     X = np.vstack(all_feats)
-    print(f"Fitting projector on data shape {X.shape}")
+    if verbosity > 1:
+        print(f"Fitting projector on data shape {X.shape}")
     projector = GaussianRandomProjection(n_components=n_components, random_state=random_state)
     projector.fit(X)
     transformer_path = models_dir / f"transformer.joblib"
     dump(projector, transformer_path)
-    print(f"Saved transformer: {transformer_path}")
+    if verbosity > 1:
+        print(f"Saved transformer: {transformer_path}")
 
     # 3) Apply transformer to each raw feature map
     for p in raw_paths:
@@ -223,7 +226,8 @@ def prepare_training_data(training_settings: dict):
         reduced_feat = red.reshape(H, W, n_components)
         red_out = red_dir / p.name.replace('_raw128', f'_feat{n_components}')
         np.save(red_out, reduced_feat.astype(np.float32))
-        print(f"Saved reduced features: {red_out} shape={reduced_feat.shape}")
+        if verbosity > 1:
+            print(f"Saved reduced features: {red_out} shape={reduced_feat.shape}")
 
     # 4) Cleanup
     if not training_settings.get('keep_extra', False):
@@ -233,4 +237,3 @@ def prepare_training_data(training_settings: dict):
             shutil.rmtree(red_dir)
 
 
-    print("Training data preparation complete.")

@@ -12,24 +12,12 @@ from training_package.evaluate_model import evaluate_model
 import argparse
 default_config = {
     "model_name": "rf_model_default",
-    
-    "feature_limit": 2,
-    "max_images": 10,
-    "n_estimators": 50,
-    "n_components": 10,
-    "max_depth": 20,
-    "n_jobs": 2,
     "random_seed": 0,
-    "verbosity": 2,
-    "resize_to": (256, 256),
     "channel_index": 0,
     "skip_existing": False,
     "feature_source": "reduced",
     "keep_output": False,
-
     "dry_run": False,
-
-
     # "test_predict_path" : Path(__file__).parent / "training_data" / "TubeImage.czi",
     "test_predict_path" : None,
 }
@@ -85,7 +73,7 @@ def parse_args():
 
     )
     p.add_argument(
-        "--verbosity", type=int, default=2,
+        "--verbosity", type=int, default=1,
         help="Verbosity level: 0 (silent), 1 (info), 2 (detailed)"
     )
     p.add_argument(
@@ -146,6 +134,8 @@ def main():
         "random_seed": args.random_seed,
     }
 
+    verbosity = args.verbosity
+
     output_dir = args.output_dir
     model_dir = args.model_dir
 
@@ -155,6 +145,8 @@ def main():
     total = len(image_processing_combos) * len(training_combos)
     idx = 0
     for ip_combo in image_processing_combos:
+        if verbosity > 0:
+            print(f"[{idx}/{total}]")
         ip_config = dict(zip(image_processing_iter_params.keys(), ip_combo))
         img_folder_name = make_image_proc_name(ip_config)
         processed_dir = output_dir / img_folder_name
@@ -176,6 +168,8 @@ def main():
             print(f"[DRY RUN] Would prepare data in {processed_dir} with {ip_config}")
         else:
             prepare_training_data(prep_config)
+            if verbosity > 0:
+                print(f"Processed data set: {img_folder_name}")
 
         for tr_combo in training_combos:
             tr_config = dict(zip(training_iter_params.keys(), tr_combo))
@@ -197,9 +191,11 @@ def main():
             }
             idx += 1
             if dry_run:
-                print(f"[{idx}/{total}] [DRY RUN] Would train model {model_name} using data from {processed_dir} with {tr_config}")
+                print(f" [DRY RUN] Would train model {model_name} using data from {processed_dir} with {tr_config}")
             else:
                 train_model(run_config)
+                if verbosity > 0:
+                    print(f"Trained model: {train_folder_name}")
                 if args.test_dir:
                     evaluate_model(run_config)
 if __name__ == "__main__":
