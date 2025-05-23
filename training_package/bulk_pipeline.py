@@ -26,11 +26,21 @@ import argparse
 import itertools
 from datetime import datetime
 from train_model_from_dataset import train_model
-def int_or_float(value):
+def int_float_sqrt_or_log2(value):
     try:
         return int(value)
     except ValueError:
-        return float(value)
+        try:
+            return float(value)
+        except ValueError:
+            if value == "sqrt" or value == "log2":
+                return value
+            return None
+def int_or_none(value):
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -38,7 +48,7 @@ def parse_args():
     )
 
     p.add_argument(
-        "--n_estimators", nargs="+", type=int, default=[50, 100, 200],
+        "--n_estimators", nargs="+", type=int, default=[10, 20, 30],
         help="Number of trees in the forest"
     ) # The number of trees in the forest
     p.add_argument(
@@ -46,11 +56,11 @@ def parse_args():
         help="Number of components for GaussianRandomProjection"
     )
     p.add_argument(
-        "--max_depth", nargs="+", type=int, default=[10, 20, None],
+        "--max_depth", nargs="+", type=int_or_none, default=[10, 20, None],
         help="Maximum depth of each tree"
     )
     p.add_argument(
-        "--feature_limit", nargs="+", type=int_or_float, default=[50, 100, None],
+        "--feature_limit", nargs="+", type=int_float_sqrt_or_log2, default=[50, 100, None],
         help="How many VGG features to keep"
     )
     p.add_argument(
@@ -77,16 +87,15 @@ def parse_args():
         help="Verbosity level: 0 (silent), 1 (info), 2 (detailed)"
     )
     p.add_argument(
+        "--skip_existing", action="store_true", default=False,
+    )
+    p.add_argument(
         "--input_dir", "-i", type=Path, default=Path.cwd() / "training_package" / "training_data",
         help="Path to input directory containing images and labels."
     )
     p.add_argument(
-        "--output_dir", "-o", type=Path, default=Path.cwd() / "output",
-        help="(Optional) Path to output directory for trained model."
-    )
-    p.add_argument(
-        "--model_dir", "-m", type=Path, default=Path.cwd() / "models",
-        help="(Optional) Path to output directory for trained model."
+        "--output_dir", "--models_dir", "-o", type=Path, default=Path.cwd() / "output",
+        help="(Optional) Path to output directory for data and models."
     )
     p.add_argument(
         "--test_dir", "-t", type=Path, default=None,
@@ -134,9 +143,9 @@ def main():
     }
 
     verbosity = args.verbosity
+    skip_existing = args.skip_existing
 
-    output_dir = args.output_dir
-    model_dir = args.model_dir
+    model_dir = args.output_dir
 
     image_processing_combos = list(itertools.product(*image_processing_iter_params.values()))
     training_combos = list(itertools.product(*training_iter_params.values()))
@@ -154,11 +163,13 @@ def main():
         img_folder_name = make_image_proc_name(ip_config)
         data_folder = model_dir / img_folder_name
         data_folder.mkdir(parents=True, exist_ok=True)
-
         if verbosity > 0:
             print(f"[{idx}/{total_ic}] dataset: {img_folder_name}")
 
         ip_config["resize_to"] = (ip_config["resize_to"], ip_config["resize_to"])
+
+
+
 
         if image_processing_params["random_seed"] == 0:
             if image_processing_params["random_seed"] == 0:
@@ -171,21 +182,28 @@ def main():
             **ip_config,
             "data_folder": data_folder,
         }
-        if dry_run:
-            print(f"[DRY RUN] Would prepare data in {processed_dir} with {ip_config}")
+        if skip_existing and (data_folder / "transformer.joblib").exists():
+            print(f"    Skipping existing feature set {img_folder_name}")
         else:
-            prepare_training_data(prep_config)
+            if dry_run:
+                print(f"    [DRY RUN] Would prepare data in {data_folder} with {ip_config}")
+            else:
+                prepare_training_data(prep_config)
         ydx = 0
         for tr_combo in training_combos:
             ydx += 1
-            if verbosity > 0:
-                print(f"[{idx}/{total_ic}][{ydx}/{total_tc}] model: {train_folder_name}")
             tr_config = dict(zip(training_iter_params.keys(), tr_combo))
             train_folder_name = make_train_name(tr_config)
+            if verbosity > 0:
+                print(f"[{idx}/{total_ic}][{ydx}/{total_tc}] model: {train_folder_name}")
             model_name = f"{img_folder_name}_{train_folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             model_folder = data_folder / train_folder_name
             model_file_path = model_folder / (model_name + ".joblib")
             model_folder.mkdir(parents=True, exist_ok=True)
+
+            if skip_existing and model_file_path.exists():
+                print(f"    Skipping existing model {model_name}")
+                continue
 
             run_config = {
                 **default_config,
@@ -200,7 +218,7 @@ def main():
             }
             
             if dry_run:
-                print(f" [DRY RUN] Would train model {model_name} using data from {processed_dir} with {tr_config}")
+                print(f"    [DRY RUN] Would train model {model_name} using data from {data_folder} with {tr_config}")
             else:
                 train_model(run_config)
                 if args.test_dir:

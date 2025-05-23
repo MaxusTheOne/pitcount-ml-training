@@ -18,7 +18,7 @@ mby ill expand this later
 
 Bulk run command
 ```bash
-python training_package\bulk_pipeline.py --n_estimators 10 --max_depth 20 None --feature_limit 0.1 0.2 0.3 --n_jobs -1 --n_components 30 50 --image_size 512 1024 --max_images 15
+python training_package\bulk_pipeline.py --n_estimators 10 --max_depth 20 None --feature_limit 0.1 0.2 0.3 sqrt log2 --n_jobs -1 --n_components 30 50 --image_size 512 1024 --max_images 15 --output_dir 'C:\Users\marku\OneDrive - Københavns Erhvervsakademi\Desktop\main_proj\models_bulk' --skip_existing 
 ```
 
 ```bash

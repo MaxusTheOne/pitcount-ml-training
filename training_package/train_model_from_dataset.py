@@ -13,16 +13,6 @@ import random
 # --- CONFIGURATION ---
 CONFIG: dict[str, Any] = {
     "feature_source": "reduced",
-    "feature_limit": 50,             # Use only first N VGG features (e.g. 2/128) | None = all | Affects RAM
-    "max_images": 10,               # Use only first N image pairs (None = all) | Affects RAM
-    "n_estimators": 50,             # Number of trees in Random Forest | Default: 50 | Affects RAM
-    "n_components": 50,
-    "max_depth": 20,                # Max depth of each tree (None = unlimited, but memory-heavy) | Default: 20 | Affects RAM
-    "n_jobs": 2,                    # CPU cores to use (-1 = all, 1 = single-threaded) | Default: 2 | Affects RAM
-    "verbosity": 1,                 # Verbosity level (0 = silent, 1 = some output, 2 = detailed) | Default: 0 | Affects CPU
-    "random_seed": 42,
-    "model_name": "rf_model",       # Model name for saving | Default: "rf_model"
-    "eval_smol": False,
 }
 
 
